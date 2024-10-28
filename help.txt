@@ -1,0 +1,2 @@
+Text file with helpful commands:
+chmod ugo+x ./sign.pl, make clean, make qemu-nox
