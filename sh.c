@@ -57,12 +57,13 @@ struct cmd *parsecmd(char*);
 void
 runcmd(struct cmd *cmd)
 {
-  //int p[2];
-  //struct backcmd *bcmd;
+  int p[2];
+  int fd;
+  struct backcmd *bcmd;
   struct execcmd *ecmd;
   //struct listcmd *lcmd;
   //struct pipecmd *pcmd;
-  //struct redircmd *rcmd;
+  struct redircmd *rcmd;
   
   if(cmd == 0)
     exit();
@@ -80,7 +81,31 @@ runcmd(struct cmd *cmd)
     break;
 
   case REDIR:
-    printf(2, "Redirection Not Implemented\n");
+    printf(2, "Redirection is an WIP\n");
+    rcmd = (struct redircmd*)cmd;
+    if (rcmd->mode == O_RDONLY){
+        close(rcmd->fd);
+        fd = open(rcmd->file, rcmd->mode);
+        if (fd < 0){
+            printf(2, "open %s failed\n", rcmd->file);
+        }
+        if (fd != rcmd->fd) { 
+            printf(2, "unexpected file descriptor %d\n", fd);
+            exit();
+        }
+    }
+    else if (rcmd->mode & O_WRONLY != 0){
+        close(rcmd->fd);
+        fd = open(rcmd->efile, rcmd->mode);  
+        if (fd < 0){
+            printf(2, "open %s failed\n", rcmd->file);
+        }
+        if (fd != rcmd->fd) { 
+            printf(2, "unexpected file descriptor %d\n", fd);
+            exit();
+        }
+    }
+    runcmd(rcmd->cmd);
     break;
 
   case LIST:
@@ -91,8 +116,15 @@ runcmd(struct cmd *cmd)
     printf(2, "Pipe Not implemented\n");
     break;
 
-  case BACK:
-    printf(2, "Backgrounding not implemented\n");
+  case BACK: //This is likely where 3.4 will be done -Kian F
+    printf(2, "Backgrounding is an WIP\n");
+    bcmd = (struct execcmd*)cmd;
+     int proc = fork1();
+    if(proc == 0) { // backgrounded proc
+        runcmd(bcmd->cmd); 
+        exit();
+    }
+
     break;
   }
   exit();
