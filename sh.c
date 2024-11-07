@@ -124,7 +124,6 @@ runcmd(struct cmd *cmd)
         runcmd(bcmd->cmd); 
         exit();
     }
-
     break;
   }
   exit();
@@ -491,3 +490,4 @@ nulterminate(struct cmd *cmd)
   }
   return cmd;
 }
+
