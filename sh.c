@@ -63,7 +63,7 @@ runcmd(struct cmd *cmd)
   struct execcmd *ecmd;
   //struct listcmd *lcmd;
   struct pipecmd *pcmd;
-  struct redircmd *rcmd;
+  struct redircmd *rcmd = (struct redircmd*)cmd; // added in the assignment for the variable
   
   if(cmd == 0)
     exit();
@@ -81,30 +81,20 @@ runcmd(struct cmd *cmd)
     break;
 
   case REDIR:
-    printf(2, "Redirection is an WIP\n");
-    rcmd = (struct redircmd*)cmd;
-    if (rcmd->mode == O_RDONLY){
-        close(rcmd->fd);
-        fd = open(rcmd->file, rcmd->mode);
-        if (fd < 0){
-            printf(2, "open %s failed\n", rcmd->file);
-        }
-        if (fd != rcmd->fd) { 
-            printf(2, "unexpected file descriptor %d\n", fd);
-            exit();
-        }
+    close(rcmd->fd);
+
+    fd = open(rcmd->file, rcmd->mode);
+    if (fd < 0) {  
+        printf(2, "open %s failed\n", rcmd->file);
+        exit();
     }
-    else if (rcmd->mode & O_WRONLY != 0){
-        close(rcmd->fd);
-        fd = open(rcmd->efile, rcmd->mode);  
-        if (fd < 0){
-            printf(2, "open %s failed\n", rcmd->file);
-        }
-        if (fd != rcmd->fd) { 
-            printf(2, "unexpected file descriptor %d\n", fd);
-            exit();
-        }
+
+    if (fd != rcmd->fd) { 
+        close(rcmd->fd);       
+        dup(fd);                
+        close(fd);              
     }
+    
     runcmd(rcmd->cmd);
     break;
 
