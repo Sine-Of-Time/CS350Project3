@@ -156,7 +156,7 @@ runcmd(struct cmd *cmd)
     break;
 
   case LIST: //doing 3.1
-    lcmd = (struct listcmd*)cmd;
+    /*lcmd = (struct listcmd*)cmd;
     if(fork1() == 0) {
     	runcmd(lcmd->left);
     }
@@ -166,10 +166,45 @@ runcmd(struct cmd *cmd)
     	runcmd(lcmd->right);
     }
     wait();
+    break;*/
+      
+    struct listcmd *lcmd = (struct listcmd*)cmd;
+    runcmd(lcmd->left);
+    wait();
+    runcmd(lcmd->right);
     break;
 
   case PIPE:
-    printf(2, "Pipe Not implemented\n");
+    //printf(2, "Pipe Not implemented\n");
+    pcmd = (struct pipecmd*)cmd;
+    int pfds[2];
+   
+    if(pipe(pfds) < 0) {
+      printf(2, "pipe failed\n");
+      exit();
+    }
+
+    if(fork1() == 0) {
+      close(1);
+      dup(pfds[1]);
+      close(pfds[0]);
+      close(pfds[1]);
+      runcmd(pcmd->left);
+    }
+
+    if(fork1() == 0) {
+      close(0);
+      dup(pfds[0]);
+      close(pfds[0]);
+      close(pfds[1]);
+      runcmd(pcmd->right);
+    }
+    // close parent pipe ends
+    close(pfds[0]);
+    close(pfds[1]);
+    // wait for both children
+    wait();
+    wait();
     break;
 
   case BACK: //This is likely where 3.4 will be done -Kian F
