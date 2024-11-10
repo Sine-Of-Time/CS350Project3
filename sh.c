@@ -3,6 +3,7 @@
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+#include <stddef.h>
 
 // Parsed command representation
 #define EXEC  1
@@ -12,6 +13,17 @@
 #define BACK  5
 
 #define MAXARGS 10
+#define MAX_HISTORY 10
+
+char *history[MAX_HISTORY];
+int history_count = 0;
+
+char *strdup(const char *s) {
+    char *d = malloc(strlen(s) + 1);
+    if (d != NULL)
+        strcpy(d, s);  
+    return d;
+}
 
 struct cmd {
   int type;
@@ -51,6 +63,24 @@ struct backcmd {
 
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
+
+void add_to_history(char *cmd) {
+    if (history_count == MAX_HISTORY) {
+        free(history[0]);
+        for (int i = 1; i < MAX_HISTORY; i++) {
+            history[i - 1] = history[i];
+        }
+        history_count--;
+    }
+    history[history_count++] = strdup(cmd);
+}
+
+void print_history() {
+    for (int i = history_count - 1; i >= 0; i--) {
+        printf(1, "Previous command %d: %s", history_count - i, history[i]);
+    }
+}
+
 struct cmd *parsecmd(char*);
 
 // Execute cmd.  Never returns.
@@ -76,6 +106,23 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
+
+    if (strcmp(ecmd->argv[0], "hist") == 0 && ecmd->argv[1] != 0) {
+        if (strcmp(ecmd->argv[1], "print") == 0) {
+            print_history();  // Print history in reverse order
+        } else {
+            int index = atoi(ecmd->argv[1]);
+            if (index > 0 && index <= history_count) {
+                char *cmd_to_run = strdup(history[history_count - index]);
+                runcmd(parsecmd(cmd_to_run));
+                free(cmd_to_run);
+            } else {
+                printf(1, "Invalid history index\n");
+            }
+        }
+        return;
+    }
+    
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -127,7 +174,7 @@ runcmd(struct cmd *cmd)
 
   case BACK: //This is likely where 3.4 will be done -Kian F
     printf(2, "Backgrounding is an WIP\n");
-    bcmd = (struct execcmd*)cmd;
+    bcmd = (struct backcmd*)cmd;  // Corrected to struct backcmd*
      int proc = fork1();
     if(proc == 0) { // backgrounded proc
         runcmd(bcmd->cmd); 
