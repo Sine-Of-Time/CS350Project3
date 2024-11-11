@@ -25,6 +25,7 @@ char *strdup(const char *s) {
     return d;
 }
 
+
 struct cmd {
   int type;
 };
@@ -87,13 +88,13 @@ struct cmd *parsecmd(char*);
 void
 runcmd(struct cmd *cmd)
 {
-  int p[2];
+  //int p[2];
   int fd;
   struct backcmd *bcmd;
   struct execcmd *ecmd;
   struct listcmd *lcmd;
-  //struct pipecmd *pcmd;
-  struct redircmd *rcmd;
+  struct pipecmd *pcmd;
+  struct redircmd *rcmd = (struct redircmd*)cmd; // added in the assignment for the variable
   
   if(cmd == 0)
     exit();
@@ -106,7 +107,7 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
-
+           
     if (strcmp(ecmd->argv[0], "hist") == 0 && ecmd->argv[1] != 0) {
         if (strcmp(ecmd->argv[1], "print") == 0) {
             print_history();  // Print history in reverse order
@@ -122,41 +123,31 @@ runcmd(struct cmd *cmd)
         }
         return;
     }
-    
+          
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
 
   case REDIR:
-    printf(2, "Redirection is an WIP\n");
-    rcmd = (struct redircmd*)cmd;
-    if (rcmd->mode == O_RDONLY){
-        close(rcmd->fd);
-        fd = open(rcmd->file, rcmd->mode);
-        if (fd < 0){
-            printf(2, "open %s failed\n", rcmd->file);
-        }
-        if (fd != rcmd->fd) { 
-            printf(2, "unexpected file descriptor %d\n", fd);
-            exit();
-        }
+    close(rcmd->fd);
+
+    fd = open(rcmd->file, rcmd->mode);
+    if (fd < 0) {  
+        printf(2, "open %s failed\n", rcmd->file);
+        exit();
     }
-    else if (rcmd->mode & O_WRONLY != 0){
-        close(rcmd->fd);
-        fd = open(rcmd->efile, rcmd->mode);  
-        if (fd < 0){
-            printf(2, "open %s failed\n", rcmd->file);
-        }
-        if (fd != rcmd->fd) { 
-            printf(2, "unexpected file descriptor %d\n", fd);
-            exit();
-        }
+
+    if (fd != rcmd->fd) { 
+        close(rcmd->fd);       
+        dup(fd);                
+        close(fd);              
     }
+    
     runcmd(rcmd->cmd);
     break;
 
-  case LIST: //doing 3.1
-    /*lcmd = (struct listcmd*)cmd;
+  case LIST:
+    lcmd = (struct listcmd*)cmd;
     if(fork1() == 0) {
     	runcmd(lcmd->left);
     }
@@ -166,12 +157,6 @@ runcmd(struct cmd *cmd)
     	runcmd(lcmd->right);
     }
     wait();
-    break;*/
-      
-    struct listcmd *lcmd = (struct listcmd*)cmd;
-    runcmd(lcmd->left);
-    wait();
-    runcmd(lcmd->right);
     break;
 
   case PIPE:
@@ -210,13 +195,12 @@ runcmd(struct cmd *cmd)
   case BACK: //This is likely where 3.4 will be done -Kian F
     printf(2, "Backgrounding is an WIP\n");
     bcmd = (struct backcmd*)cmd;  // Corrected to struct backcmd*
-     int proc = fork1();
-    if(proc == 0) { // backgrounded proc
+    int proc = fork1();
+    if(proc == 0) {  // backgrounded proc
         runcmd(bcmd->cmd); 
         exit();
     }
-
-    break;
+    break;  
   }
   exit();
 }
@@ -255,6 +239,12 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
+    
+    if (!(buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't' &&
+          (buf[4] == ' ' || buf[4] == '\n' || buf[4] == '\0'))) {
+      add_to_history(buf);
+    }
+    
     if(fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
@@ -569,12 +559,11 @@ nulterminate(struct cmd *cmd)
     nulterminate(pcmd->right);
     break;
 
-  case LIST: //little confused as to how to adjust this one
+  case LIST:
     lcmd = (struct listcmd*)cmd;
     nulterminate(lcmd->left);
     nulterminate(lcmd->right);
     break;
-    
 
   case BACK:
     bcmd = (struct backcmd*)cmd;
