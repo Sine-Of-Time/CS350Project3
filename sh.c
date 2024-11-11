@@ -193,7 +193,7 @@ runcmd(struct cmd *cmd)
     break;
 
   case BACK: //This is likely where 3.4 will be done -Kian F
-    printf(2, "Backgrounding is an WIP\n");
+    //printf(2, "Backgrounding is an WIP\n");
     bcmd = (struct backcmd*)cmd;  // Corrected to struct backcmd*
     int proc = fork1();
     if(proc == 0) {  // backgrounded proc
